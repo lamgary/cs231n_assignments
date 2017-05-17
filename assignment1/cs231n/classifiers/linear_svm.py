@@ -79,12 +79,12 @@ def svm_loss_vectorized(W, X, y, reg):
   num_train = X.shape[0]
   num_classes = W.shape[1]
 
+  dW = np.zeros(W.shape)
+
   scores = X.dot(W)  # num_train x num_classes
   correct_class_score = scores[np.arange(num_train), y]  # num_train x 1
   margins = np.maximum(0, scores.T - correct_class_score + 1).T # num_train x num_classes
-
-  # clear out margins of correct label
-  margins[np.arange(num_train),y] = 0
+  margins[np.arange(num_train),y] = 0 # clear out margins of correct label
 
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
@@ -93,12 +93,12 @@ def svm_loss_vectorized(W, X, y, reg):
   # Add regularization to the loss.
   loss += reg * np.sum(W * W)
 
-  classes_meeting_margin = np.maximum(margins, 1)  #num_features x num_classes
-  classes_meeting_margin[np.arange(num_train), y] = -1
+  margins = (margins > 0) * np.ones(margins.shape) # clear out negative margins; num_train x
+  number_classes_meeting_margin = np.sum(margins, axis=1) #num_train x 1
+  margins[np.arange(num_train), y] = -number_classes_meeting_margin
 
-  # update losses for all classes
-  dW = X.T.dot(classes_meeting_margin) #num_features x num_classes
-
+  # update losses for correct class
+  dW += X.T.dot(margins) #num_features x num_classes
   dW /= num_train
   dW += reg * 2 * W
   #############################################################################

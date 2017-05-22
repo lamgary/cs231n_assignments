@@ -3,6 +3,7 @@ from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 from past.builtins import xrange
+from cs231n.classifiers.softmax import *
 
 class TwoLayerNet(object):
   """
@@ -70,13 +71,19 @@ class TwoLayerNet(object):
     N, D = X.shape
 
     # Compute the forward pass
-    scores = None
+    relu = lambda x: np.maximum(x, 0)
+    hidden_layer = relu(X.dot(W1) + np.tile(b1, [N, 1])) # (N,H)
+    scores = hidden_layer.dot(W2) + np.tile(b2, [N, 1]) # (N,C)
+
+    scores -= np.max(scores, axis=1, keepdims=True)  # (N, C)
+    scores = np.exp(scores)
+    scores /= np.sum(scores, axis=1, keepdims=True)  # (N, C)
+
     #############################################################################
     # TODO: Perform the forward pass, computing the class scores for the input. #
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -85,15 +92,16 @@ class TwoLayerNet(object):
     if y is None:
       return scores
 
-    # Compute the loss
-    loss = None
     #############################################################################
     # TODO: Finish the forward pass, and compute the loss. This should include  #
     # both the data loss and L2 regularization for W1 and W2. Store the result  #
     # in the variable loss, which should be a scalar. Use the Softmax           #
     # classifier loss.                                                          #
     #############################################################################
-    pass
+
+    loss = - np.sum(np.log(scores[np.arange(N), y]))
+    loss /= N
+    loss += reg * (np.sum(W2 * W2) + np.sum(W1 * W1))
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -103,9 +111,20 @@ class TwoLayerNet(object):
     #############################################################################
     # TODO: Compute the backward pass, computing the derivatives of the weights #
     # and biases. Store the results in the grads dictionary. For example,       #
-    # grads['W1'] should store the gradient on W1, and be a matrix of same size #
+      # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+
+    dLdoutput = scores
+    dLdoutput[np.arange(N), y] -= 1 #gradient of loss w.r.t output layer: (N,C)
+
+    doutputdhidden = W2 # gradient of output layer w.r.t hidden layer (H, C)
+    dLdhidden = doutputdhidden.dot(dLdoutput.T).T # (N,H)
+    dLdrelu = (hidden_layer > 0) * dLdhidden  # (N,H)
+
+    grads['b2'] = np.mean(dLdoutput, axis=0)
+    grads['W2'] = (hidden_layer.T.dot(dLdoutput) / N) + (2 * reg * W2)
+    grads['b1'] = np.mean(dLdrelu, axis=0)
+    grads['W1'] = (X.T.dot(dLdrelu) / N) + (2 * reg * W1)
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -141,15 +160,15 @@ class TwoLayerNet(object):
     train_acc_history = []
     val_acc_history = []
 
+    all_indicies = np.arange(num_train)
     for it in xrange(num_iters):
-      X_batch = None
-      y_batch = None
-
       #########################################################################
       # TODO: Create a random minibatch of training data and labels, storing  #
       # them in X_batch and y_batch respectively.                             #
       #########################################################################
-      pass
+      indicies = np.random.choice(all_indicies, batch_size)
+      X_batch = X[indicies] # batch_size x dim
+      y_batch = y[indicies] # batchsize
       #########################################################################
       #                             END OF YOUR CODE                          #
       #########################################################################
@@ -164,7 +183,10 @@ class TwoLayerNet(object):
       # using stochastic gradient descent. You'll need to use the gradients   #
       # stored in the grads dictionary defined above.                         #
       #########################################################################
-      pass
+      self.params['W1'] += - learning_rate * grads['W1']
+      self.params['W2'] += - learning_rate * grads['W2']
+      self.params['b1'] += - learning_rate * grads['b1']
+      self.params['b2'] += - learning_rate * grads['b2']
       #########################################################################
       #                             END OF YOUR CODE                          #
       #########################################################################
@@ -204,12 +226,7 @@ class TwoLayerNet(object):
       the elements of X. For all i, y_pred[i] = c means that X[i] is predicted
       to have class c, where 0 <= c < C.
     """
-    y_pred = None
-
-    ###########################################################################
-    # TODO: Implement this function; it should be VERY simple!                #
-    ###########################################################################
-    pass
+    y_pred = np.argmax(self.loss(X), axis=1)
     ###########################################################################
     #                              END OF YOUR CODE                           #
     ###########################################################################

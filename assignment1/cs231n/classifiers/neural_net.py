@@ -19,7 +19,9 @@ class TwoLayerNet(object):
 
   The outputs of the second fully-connected layer are the scores for each class.
   """
-
+  N = x.shape[0]
+  D = np.prod(x.shape[1:])
+  x_reshaped = x.reshape(N, D)
   def __init__(self, input_size, hidden_size, output_size, std=1e-4):
     """
     Initialize the model. Weights are initialized to small random values and

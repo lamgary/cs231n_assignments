@@ -18,7 +18,7 @@ class TwoLayerNet(object):
     will interact with a separate Solver object that is responsible for running
     optimization.
 
-    The learnable parameters of the model are stored in the dictionary
+    The learnazble parameters of the model are stored in the dictionary
     self.params that maps parameter names to numpy arrays.
     """
 
@@ -47,7 +47,10 @@ class TwoLayerNet(object):
         # weights and biases using the keys 'W1' and 'b1' and second layer weights #
         # and biases using the keys 'W2' and 'b2'.                                 #
         ############################################################################
-        pass
+        self.params['W1'] = weight_scale * np.random.randn(input_dim, hidden_dim)
+        self.params['b1'] = np.zeros(hidden_dim)
+        self.params['W2'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params['b2'] = np.zeros(num_classes)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -72,12 +75,19 @@ class TwoLayerNet(object):
         - grads: Dictionary with the same keys as self.params, mapping parameter
           names to gradients of the loss with respect to those parameters.
         """
-        scores = None
         ############################################################################
         # TODO: Implement the forward pass for the two-layer net, computing the    #
         # class scores for X and storing them in the scores variable.              #
         ############################################################################
-        pass
+
+        N = X.shape[0]
+        W1 = self.params['W1']
+        b1 = self.params['b1']
+        W2 = self.params['W2']
+        b2 = self.params['b2']
+
+        hidden_layer, layer_1_cache = affine_relu_forward(X, W1, b1)
+        scores, layer_2_cache = affine_relu_forward(hidden_layer, W2, b2)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -97,7 +107,18 @@ class TwoLayerNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+        loss, dout = softmax_loss(scores, y)
+        loss += self.reg * 0.5 * (np.sum(W2**2) + np.sum(W1**2))
+
+        dhidden, dw2, db2 = affine_relu_backward(dout, layer_2_cache)
+        dw2 += self.reg * W2
+        dx, dw1, db1 = affine_relu_backward(dhidden, layer_1_cache)
+        dw1 += self.reg * W1
+
+        grads['W2'] = dw2
+        grads['b2'] = db2
+        grads['W1'] = dw1
+        grads['b1'] = db1
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

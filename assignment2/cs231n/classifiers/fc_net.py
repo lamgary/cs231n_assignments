@@ -125,6 +125,11 @@ class TwoLayerNet(object):
 
         return loss, grads
 
+def weight_param_name(layer_index):
+        return "W" + str(layer_index)
+
+def bias_param_name(layer_index):
+        return "b" + str(layer_index)
 
 class FullyConnectedNet(object):
     """
@@ -141,7 +146,6 @@ class FullyConnectedNet(object):
     Similar to the TwoLayerNet above, learnable parameters are stored in the
     self.params dictionary and will be learned using the Solver class.
     """
-
     def __init__(self, hidden_dims, input_dim=3*32*32, num_classes=10,
                  dropout=0, use_batchnorm=False, reg=0.0,
                  weight_scale=1e-2, dtype=np.float32, seed=None):
@@ -184,7 +188,13 @@ class FullyConnectedNet(object):
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
-        pass
+        dimensions = [input_dim] + hidden_dims + [num_classes]
+        for i in range(1, self.num_layers + 1): #1 indexed..
+            input_dim = dimensions[i - 1]
+            output_dim = dimensions[i]
+            self.params[weight_param_name(i)] = weight_scale * np.random.randn(input_dim, output_dim)
+            self.params[bias_param_name(i)] = np.zeros(output_dim)
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -211,7 +221,6 @@ class FullyConnectedNet(object):
         for k, v in self.params.items():
             self.params[k] = v.astype(dtype)
 
-
     def loss(self, X, y=None):
         """
         Compute loss and gradient for the fully-connected net.
@@ -230,6 +239,8 @@ class FullyConnectedNet(object):
                 bn_param['mode'] = mode
 
         scores = None
+
+        caches = {}
         ############################################################################
         # TODO: Implement the forward pass for the fully-connected net, computing  #
         # the class scores for X and storing them in the scores variable.          #
@@ -242,7 +253,19 @@ class FullyConnectedNet(object):
         # self.bn_params[1] to the forward pass for the second batch normalization #
         # layer, etc.                                                              #
         ############################################################################
-        pass
+        previous_output = X
+        for layer_index in range(1, self.num_layers + 1):
+            W = self.params[weight_param_name(layer_index)]
+            b = self.params[bias_param_name(layer_index)]
+
+            if(layer_index != self.num_layers):
+                previous_output, cache = affine_relu_forward(previous_output, W, b)
+            else:
+                #final layer is just an affine layer
+                previous_output, cache = affine_forward(previous_output, W, b)
+            caches[layer_index] = cache
+
+        scores = previous_output
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -265,7 +288,23 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+        loss, dout = softmax_loss(scores, y)
+
+        for layer_index in range(self.num_layers, 0, -1):
+            # Add regularization
+            W = self.params[weight_param_name(layer_index)]
+            loss += self.reg * 0.5 * np.sum(W**2)
+
+            # backprop gradients
+            cache = caches[layer_index]
+
+            if(layer_index != self.num_layers):
+                dout, dw, db = affine_relu_backward(dout, cache)
+            else:
+                dout, dw, db = affine_backward(dout, cache)
+            dw += self.reg * W
+            grads[weight_param_name(layer_index)] = dw
+            grads[bias_param_name(layer_index)] = db
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

@@ -305,6 +305,11 @@ class FullyConnectedNet(object):
                     previous_output, cache = affine_batchnorm_relu_forward(previous_output, W, b, gamma, beta, bn_param)
                 else:
                     previous_output, cache = affine_relu_forward(previous_output, W, b)
+
+                if self.use_dropout:
+                    # add dropout after ReLU non-linearity if using dropout
+                    previous_output, dropout_cache = dropout_forward(previous_output, self.dropout_param)
+                    cache = (cache, dropout_cache)
             else:
                 #final layer is just an affine layer
                 previous_output, cache = affine_forward(previous_output, W, b)
@@ -344,6 +349,9 @@ class FullyConnectedNet(object):
             cache = caches[layer_index]
 
             if(layer_index != self.num_layers):
+                if self.use_dropout:
+                    cache, dropout_cache = cache
+                    dout = dropout_backward(dout, dropout_cache)
                 if self.use_batchnorm:
                     dout, dw, db, dgamma, dbeta = affine_batchnorm_relu_backward(dout, cache)
                     grads[gamma_param_name(layer_index)] = dgamma

@@ -38,6 +38,7 @@ class ThreeLayerConvNet(object):
         self.reg = reg
         self.dtype = dtype
 
+        C,H,W = input_dim
         ############################################################################
         # TODO: Initialize weights and biases for the three-layer convolutional    #
         # network. Weights should be initialized from a Gaussian with standard     #
@@ -48,7 +49,20 @@ class ThreeLayerConvNet(object):
         # hidden affine layer, and keys 'W3' and 'b3' for the weights and biases   #
         # of the output affine layer.                                              #
         ############################################################################
-        pass
+        self.params['W1'] = np.random.normal(scale=weight_scale, size=(num_filters, C, filter_size, filter_size))
+        self.params['b1'] = np.zeros(num_filters)
+
+        # conv layers preserve size, and pooling layers downsamples
+        pool_height = 2
+        pool_width = 2
+        pool_stride = 2
+        pool_out_height = int((H - pool_height) / pool_stride + 1)
+        pool_out_width = int((W - pool_width) / pool_width + 1)
+        layer_2_input_width = num_filters * pool_out_height * pool_out_width
+        self.params['W2'] = np.random.normal(scale=weight_scale, size=(layer_2_input_width, hidden_dim))
+        self.params['b2'] = np.zeros(hidden_dim)
+        self.params['W3'] = np.random.normal(scale=weight_scale, size=(hidden_dim, num_classes))
+        self.params['b3'] = np.zeros(num_classes)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -57,7 +71,7 @@ class ThreeLayerConvNet(object):
             self.params[k] = v.astype(dtype)
 
 
-    def loss(self, X, y=None):
+    def loss(self, x, y=None):
         """
         Evaluate loss and gradient for the three-layer convolutional network.
 
@@ -80,24 +94,41 @@ class ThreeLayerConvNet(object):
         # computing the class scores for X and storing them in the scores          #
         # variable.                                                                #
         ############################################################################
-        pass
+        layer_1_out, layer_1_cache = conv_relu_pool_forward(x, W1, b1, conv_param, pool_param)
+        layer_2_out, layer_2_cache = affine_relu_forward(layer_1_out, W2, b2)
+        layer_3_out, layer_3_cache = affine_forward(layer_2_out, W3, b3)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
-
+        scores = layer_3_out
         if y is None:
             return scores
 
         loss, grads = 0, {}
+
         ############################################################################
         # TODO: Implement the backward pass for the three-layer convolutional net, #
         # storing the loss and gradients in the loss and grads variables. Compute  #
         # data loss using softmax, and make sure that grads[k] holds the gradients #
         # for self.params[k]. Don't forget to add L2 regularization!               #
         ############################################################################
-        pass
+        loss, dout = softmax_loss(scores, y)
+
+        # Add L2 Regularization
+        loss += self.reg * 0.5 * (np.sum(W1 ** 2) + np.sum(W2 ** 2) + np.sum(W3 ** 2))
+
+        # Run backprop
+        dout, dw3, db3 = affine_backward(dout, layer_3_cache)
+        dout, dw2, db2 = affine_relu_backward(dout, layer_2_cache)
+        dout, dw1, db1 = conv_relu_pool_backward(dout, layer_1_cache)
+
+        grads['W1'] = dw1
+        grads['b1'] = db1
+        grads['W2'] = dw2
+        grads['b2'] = db2
+        grads['W3'] = dw3
+        grads['b3'] = db3
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
-
         return loss, grads

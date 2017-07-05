@@ -611,7 +611,7 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     ###########################################################################
 
     # Transpose before re-shaping, since you can only re-shape adjacent dimensions
-    # see: https://www.reddit.com/r/cs231n/comments/443y2g/hints_for_a2/
+    # see: https://www.reddit.com/r/cs231n/comments/443y2g/hint1s_for_a2/
     batchnorm, cache = batchnorm_forward(x.transpose(0,2,3,1).reshape(N*H*W,C), gamma, beta, bn_param)
     out = batchnorm.reshape(N,H,W,C).transpose(0,3,1,2)
     ###########################################################################

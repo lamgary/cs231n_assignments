@@ -277,7 +277,11 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
     g = np.tanh(a[:,3*H:4*H]) #(N,H)
 
     next_c = f * prev_c + i * g
-    next_h = o * np.tanh(next_c)
+
+    tanh_nextc = np.tanh(next_c)
+    next_h = o * tanh_nextc
+
+    cache = (x, Wx, prev_h, Wh, b, a, i, f, o, g, prev_c, next_c, next_h, tanh_nextc)
 
     ##############################################################################
     #                               END OF YOUR CODE                             #
@@ -310,7 +314,31 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
     # HINT: For sigmoid and tanh you can compute local derivatives in terms of  #
     # the output value from the nonlinearity.                                   #
     #############################################################################
-    pass
+    (x, Wx, prev_h, Wh, b, a, i, f, o, g, prev_c, next_c, next_h, tanh_nextc) = cache
+
+    do = dnext_h * tanh_nextc  #(N,H)
+
+    dtanh_nextc = dnext_h * o  #(N,H)
+    dnext_c_sum = (1 - tanh_nextc * tanh_nextc ) * dtanh_nextc + dnext_c   # backprop through tanh - (N,H)
+
+    dprev_c = f * dnext_c_sum  # (N,H)
+    df = prev_c * dnext_c_sum #(N,H)
+    di = g * dnext_c_sum #(N,H)
+    dg = i * dnext_c_sum #(N,H)
+
+    dai = ((1- i) * i) * di  #(N,H)
+    daf = ((1- f) * f) * df  #(N,H)
+    dao = ((1 - o) * o) * do #(N,H)
+    dag = (1 - g * g) * dg   #(N,H)
+
+    da = np.concatenate((dai, daf, dao, dag), axis=1) #(N,4H)
+
+    dx = da.dot(Wx.T)  # (N,4H) x (D,4H)' == (N,D)
+    dWx = x.T.dot(da)  # (N,D)' x (N,4H) == (D,4H)
+    dprev_h = da.dot(Wh.T)  # (N,4H) x (H, 4H)' == (N,H)
+    dWh = prev_h.T.dot(da) # (N,H)' x (N,4H) == (H,4H)
+
+    db = np.sum(da,axis=0)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################

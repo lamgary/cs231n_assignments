@@ -146,9 +146,15 @@ class CaptioningRNN(object):
             h_out, rnn_cache = rnn_forward(word_embeddings, h0, Wx, Wh, b)
             temporal_forward_out, temporal_forward_cache = temporal_affine_forward(h_out, W_vocab, b_vocab)
             loss, dout = temporal_softmax_loss(temporal_forward_out, captions_out, mask)
+            dout, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dout, temporal_forward_cache)
+            dout, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dout, rnn_cache)
 
-        dout, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dout, temporal_forward_cache)
-        dout, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dout, rnn_cache)
+        elif self.cell_type == 'lstm':
+            h_out, lstm_cache = lstm_forward(word_embeddings, h0, Wx, Wh, b)
+            temporal_forward_out, temporal_forward_cache = temporal_affine_forward(h_out, W_vocab, b_vocab)
+            loss, dout = temporal_softmax_loss(temporal_forward_out, captions_out, mask)
+            dout, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dout, temporal_forward_cache)
+            dout, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(dout, lstm_cache)
 
         grads['W_embed'] = word_embedding_backward(dout, word_embedding_cache)
         dout, grads['W_proj'], grads['b_proj']= affine_backward(dh0, affine_forward_cache)
@@ -218,13 +224,21 @@ class CaptioningRNN(object):
         h_out, affine_forward_cache = affine_forward(features, W_proj, b_proj)  # (N,H)
         input_words = np.full(N, self._start)
 
+        H = h_out.shape[1]
+        next_c = np.zeros([N,H])
+
         for t in range(0, max_length):
+            word_embeddings, _ = word_embedding_forward(input_words, W_embed)  # (N,W)
+
             if self.cell_type == 'rnn':
-                word_embeddings, word_embedding_cache = word_embedding_forward(input_words, W_embed)  # (N,W)
-                h_out, rnn_cache = rnn_step_forward(word_embeddings, h_out, Wx, Wh, b)
-                step_affine_forward, temporal_forward_cache = affine_forward(h_out, W_vocab, b_vocab)
-                input_words = np.argmax(step_affine_forward, axis=1)
-                captions[:, t] = input_words
+                h_out, _ = rnn_step_forward(word_embeddings, h_out, Wx, Wh, b)
+
+            elif self.cell_type == 'lstm':
+                h_out, next_c, _ = lstm_step_forward(word_embeddings, h_out, next_c, Wx, Wh, b)
+
+            step_affine_forward, cache = affine_forward(h_out, W_vocab, b_vocab)
+            input_words = np.argmax(step_affine_forward, axis=1)
+            captions[:, t] = input_words
 
         ############################################################################
         #                             END OF YOUR CODE                             #

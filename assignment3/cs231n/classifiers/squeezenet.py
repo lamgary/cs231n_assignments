@@ -75,6 +75,7 @@ class SqueezeNet(object):
 
 
     def __init__(self, save_path=None, sess=None):
+
         """Create a SqueezeNet model.
         Inputs:
         - save_path: path to TensorFlow checkpoint

@@ -73,6 +73,7 @@ class SqueezeNet(object):
                 layers.append(x)
         return layers
 
+
     def __init__(self, save_path=None, sess=None):
         """Create a SqueezeNet model.
         Inputs:
@@ -103,7 +104,6 @@ class SqueezeNet(object):
                 x = tf.nn.avg_pool(x,[1,13,13,1],strides=[1,13,13,1],padding='VALID')
                 self.layers.append(x)
         self.classifier = tf.reshape(x,[-1, NUM_CLASSES])
-
         if save_path is not None:
             saver = tf.train.Saver()
             saver.restore(sess, save_path)

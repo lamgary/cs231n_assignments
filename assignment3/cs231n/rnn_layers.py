@@ -418,7 +418,6 @@ def lstm_backward(dh, cache):
     dprev_c = np.zeros([N,H])
     dprev_h = np.zeros([N,H])
 
-    np.linalg.norm()
     for t in reversed(range(0,T)):
         dx_curr, dprev_h, dprev_c, dWx_temp, dWh_temp, db_temp = lstm_step_backward(dh[:,t,:] + dprev_h, dprev_c, cache[t])
 
